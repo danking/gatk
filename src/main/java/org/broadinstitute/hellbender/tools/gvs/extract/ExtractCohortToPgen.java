@@ -20,9 +20,9 @@ import org.broadinstitute.pgen.PgenWriter;
 @DocumentedFeature
 public class ExtractCohortToPgen extends ExtractCohort {
     @Argument(
-        shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-        fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-        doc = "Output PGEN file to which annotated variants should be written."
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "Output PGEN file to which annotated variants should be written."
     )
     protected GATKPath outputPgenPath = null;
 
@@ -34,7 +34,13 @@ public class ExtractCohortToPgen extends ExtractCohort {
     )
     protected PgenWriter.PgenWriteMode writeMode = PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_AND_COPY;
 
-    @Argument(fullName = "maxAltAlleles", shortName = "maa", doc = "Maximum alt alleles to write.", optional = true)
+    @Argument(
+            fullName = "maxAltAlleles",
+            shortName = "maa",
+            doc = "Maximum alt alleles to write.",
+            maxValue = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
+            optional = true
+    )
     private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
     protected PgenWriter pgenWriter = null;
