@@ -136,3 +136,9 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+       subclass: WDL
+       primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+       filters:
+         branches:
+           - kl_gvs_walker_for_pgen
