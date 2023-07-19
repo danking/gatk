@@ -137,8 +137,8 @@ workflows:
          tags:
              - /.*/
    - name: GvsExtractCallsetPgen
-       subclass: WDL
-       primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
-       filters:
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
          branches:
-           - kl_gvs_walker_for_pgen
+             - kl_gvs_walker_for_pgen
