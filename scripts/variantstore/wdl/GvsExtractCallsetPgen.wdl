@@ -269,6 +269,7 @@ task ExtractTask {
 
         # Runtime Options:
         File? gatk_override
+        String? docker_override = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots/gatk-remote-builds:klydon-26e488430a400bb6cf113505fc5e627080a269ed-4.4.0.0-52-g26e488430"
         Int? extract_preemptible_override
         Int? extract_maxretries_override
 
@@ -361,7 +362,7 @@ task ExtractTask {
         echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_PVAR_DEST},${OUTPUT_FILE_PVAR_BYTES},${OUTPUT_FILE_PSAM_DEST},${OUTPUT_FILE_PSAM_BYTES} >> manifest.txt
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots/gatk-remote-builds:klydon-26e488430a400bb6cf113505fc5e627080a269ed-4.4.0.0-52-g26e488430"
+        docker: docker_override
         memory: "12 GB"
         disks: "local-disk 150 HDD"
         bootDiskSizeGb: 15
