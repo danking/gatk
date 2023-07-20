@@ -57,7 +57,26 @@ public class ExtractCohortToPgen extends ExtractCohort {
         if (variantContext != null) {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
-                pgenWriter.add(variantContext);
+                try {
+                    pgenWriter.add(variantContext);
+                }
+                catch(IllegalStateException e) {
+                    logger.error("Encountered an error.  Here's some debug info:\n" +
+                            "ID: " + variantContext.getID() + "\n" +
+                            "NAlleles: " + variantContext.getNAlleles() + "\n" +
+                            "Contig: " + variantContext.getContig() + "\n" +
+                            "Start: " + variantContext.getStart() + "\n" +
+                            "End: " + variantContext.getEnd() + "\n" +
+                            "NoCallCount: " + variantContext.getNoCallCount() + "\n" +
+                            "HomRefCount: " + variantContext.getHomRefCount() + "\n" +
+                            "HetCount: " + variantContext.getHetCount() + "\n" +
+                            "HomVarCount: " + variantContext.getHomVarCount() + "\n" +
+                            "MixedCount: " + variantContext.getMixedCount() + "\n" +
+                            "NSamples: " + variantContext.getNSamples() + "\n" +
+                            "Genotypes.size(): " + variantContext.getGenotypes().size());
+
+                    throw e;
+                }
             }
             progressMeter.update(variantContext);
         }
