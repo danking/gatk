@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.io.HtsPath;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -58,6 +60,14 @@ public class ExtractCohortToPgen extends ExtractCohort {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
+                    // Add missing genotypes if necessary
+                    // TODO: talk to Chris about moving this part into the writer
+                    for(String sample : header.getGenotypeSamples()) {
+                        Genotype g = variantContext.getGenotype(sample);
+                        if (g == null) {
+                            variantContext.getGenotypes().add(GenotypeBuilder.createMissing(sample, 2));
+                        }
+                    }
                     pgenWriter.add(variantContext);
                 }
                 catch(IllegalStateException e) {
@@ -74,7 +84,6 @@ public class ExtractCohortToPgen extends ExtractCohort {
                             "MixedCount: " + variantContext.getMixedCount() + "\n" +
                             "NSamples: " + variantContext.getNSamples() + "\n" +
                             "Genotypes.size(): " + variantContext.getGenotypes().size());
-
                     throw e;
                 }
             }
