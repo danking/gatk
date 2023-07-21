@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.io.HtsPath;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -62,13 +60,21 @@ public class ExtractCohortToPgen extends ExtractCohort {
                 try {
                     // Add missing genotypes if necessary
                     // TODO: talk to Chris about moving this part into the writer
-                    for(String sample : header.getGenotypeSamples()) {
-                        Genotype g = variantContext.getGenotype(sample);
-                        if (g == null) {
-                            variantContext.getGenotypes().add(GenotypeBuilder.createMissing(sample, 2));
+                    if (variantContext.getNSamples() < header.getNGenotypeSamples()) {
+                        GenotypesContext newGC = GenotypesContext.copy(variantContext.getGenotypes());
+                        for(String sample : header.getGenotypeSamples()) {
+                            Genotype g = variantContext.getGenotype(sample);
+                            if (g == null) {
+                                newGC.add(GenotypeBuilder.createMissing(sample, 2));
+                            }
                         }
+                        VariantContext newVC = new VariantContextBuilder(variantContext).genotypes(newGC).make();
+                        pgenWriter.add(newVC);
                     }
-                    pgenWriter.add(variantContext);
+                    else {
+                        pgenWriter.add(variantContext);
+                    }
+
                 }
                 catch(IllegalStateException e) {
                     logger.error("Encountered an error.  Here's some debug info:\n" +
