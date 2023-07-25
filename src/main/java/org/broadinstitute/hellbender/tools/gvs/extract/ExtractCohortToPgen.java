@@ -10,6 +10,9 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.pgen.PgenWriter;
 
+import java.util.EnumSet;
+import java.util.List;
+
 
 @SuppressWarnings("unused")
 @CommandLineProgramProperties(
@@ -49,7 +52,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
     protected void onStartup() {
         super.onStartup();
 
-        pgenWriter = new PgenWriter(outputPgenPath, header, writeMode, PgenWriter.VARIANT_COUNT_UNKNOWN, maxAltAlleles);
+        pgenWriter = new PgenWriter(outputPgenPath, header, writeMode, EnumSet.noneOf(PgenWriter.PgenWriteFlag.class), maxAltAlleles);
     }
 
     @Override
@@ -58,23 +61,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
             if (variantContext.isNotFiltered() || !excludeFilteredSites) {
                 try {
-                    // Add missing genotypes if necessary
-                    // TODO: talk to Chris about moving this part into the writer
-                    if (variantContext.getNSamples() < header.getNGenotypeSamples()) {
-                        GenotypesContext newGC = GenotypesContext.copy(variantContext.getGenotypes());
-                        for(String sample : header.getGenotypeSamples()) {
-                            Genotype g = variantContext.getGenotype(sample);
-                            if (g == null) {
-                                newGC.add(GenotypeBuilder.createMissing(sample, 2));
-                            }
-                        }
-                        VariantContext newVC = new VariantContextBuilder(variantContext).genotypes(newGC).make();
-                        pgenWriter.add(newVC);
-                    }
-                    else {
-                        pgenWriter.add(variantContext);
-                    }
-
+                    pgenWriter.add(variantContext);
                 }
                 catch(IllegalStateException e) {
                     logger.error("Encountered an error.  Here's some debug info:\n" +
