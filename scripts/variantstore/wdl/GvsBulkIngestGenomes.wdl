@@ -45,16 +45,13 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
     }
 
-    ## Start off by getting the Workspace ID to query for more information
-    call GetWorkspaceId
+    call Utils.GetWorkspaceId
 
-    ## Next, use the workspace ID to get the Workspace Name
-    call GetWorkspaceName {
+    call Utils.GetWorkspaceName {
         input:
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
-
 
     call GetColumnNames {
         input:
@@ -115,65 +112,6 @@ workflow GvsBulkIngestGenomes {
 
     output {
         Boolean done = true
-    }
-}
-
-task GetWorkspaceId {
-    ## In order to get the ID and bucket of the workspace, without requiring that the user input it manually, we check the delocalization script
-    meta {
-        volatile: true # always run this when asked otherwise you can get a previously run workspace
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
-        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
-    >>>
-
-    runtime {
-        docker: "ubuntu:latest"
-    }
-
-    output {
-        String workspace_id = read_string("workspace_id.txt")
-        String workspace_bucket = read_string("workspace_bucket.txt")
-    }
-}
-
-task GetWorkspaceName {
-    ## In order to get the name and namespace of the workspace, without requiring that the user input it manually, we hit rawls directly for the exact name
-    input {
-        String workspace_id
-        String workspace_bucket
-    }
-
-    String workspace_name_output = "workspace_name.txt"
-    String workspace_namespace_output = "workspace_namespace.txt"
-
-    command <<<
-        # Hit rawls with the workspace ID
-
-        export WORKSPACE_BUCKET='~{workspace_bucket}'
-
-        python3 /app/get_workspace_name_for_import.py \
-        --workspace_id ~{workspace_id} \
-        --workspace_name_output ~{workspace_name_output} \
-        --workspace_namespace_output ~{workspace_namespace_output} \
-
-    >>>
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
-        memory: "3 GB"
-        disks: "local-disk 10 HDD"
-        cpu: 1
-    }
-
-    output {
-        String workspace_name = read_string(workspace_name_output)
-        String workspace_namespace = read_string(workspace_namespace_output)
     }
 }
 

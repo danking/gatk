@@ -1,13 +1,12 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
 import "GvsCallsetCost.wdl" as GvsCallsetCost
 
 workflow GvsJointVariantCallsetCost {
     input {
         String project_id
         String dataset_name
-        String workspace_namespace
-        String workspace_name
         String call_set_identifier
     }
 
@@ -22,14 +21,21 @@ workflow GvsJointVariantCallsetCost {
     Float query_cost = 0.005 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
     Float storage_api_cost = 0.0011 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
+    call Utils.GetWorkspaceId
+
+    call Utils.GetWorkspaceName {
+        input:
+            workspace_id = GetWorkspaceId.workspace_id,
+            workspace_bucket = GetWorkspaceId.workspace_bucket,
+    }
 
     call GvsCallsetCost.GvsCallsetCost {
         input:
             call_set_identifier = call_set_identifier,
             dataset_name = dataset_name,
             project_id = project_id,
-            workspace_namespace = workspace_namespace,
-            workspace_name = workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
+            workspace_name = GetWorkspaceName.workspace_name,
             excluded_submission_ids = excluded_submission_ids,
     }
 
