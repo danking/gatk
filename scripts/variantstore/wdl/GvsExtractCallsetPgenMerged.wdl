@@ -30,6 +30,7 @@ workflow GvsExtractCallsetMerged {
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
         File? gatk_override
+        String? extract_docker_override
 
         String output_file_base_name = filter_set_name
 
@@ -74,7 +75,8 @@ workflow GvsExtractCallsetMerged {
             split_intervals_mem_override = split_intervals_mem_override,
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
-            write_cost_to_db = write_cost_to_db
+            write_cost_to_db = write_cost_to_db,
+            extract_docker_override = extract_docker_override
     }
 
     call Merge.MergePgen {

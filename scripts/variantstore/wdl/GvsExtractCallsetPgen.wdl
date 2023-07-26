@@ -28,6 +28,7 @@ workflow GvsExtractCallset {
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
         File? gatk_override
+        String? extract_docker_override
 
         String output_file_base_name = filter_set_name
 
@@ -185,7 +186,8 @@ workflow GvsExtractCallset {
                 extract_maxretries_override        = extract_maxretries_override,
                 emit_pls                           = emit_pls,
                 emit_ads                           = emit_ads,
-                write_cost_to_db                   = write_cost_to_db
+                write_cost_to_db                   = write_cost_to_db,
+                docker_override                    = extract_docker_override
         }
     }
 
