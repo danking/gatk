@@ -130,7 +130,7 @@ task AssignIds {
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
-    set -o errexit -o pipefail -o verbose
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     # make sure that sample names were actually passed, fail if empty
     num_samples=~{length(sample_names)}
@@ -187,7 +187,7 @@ task AssignIds {
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3.75 GB"
-    disks: "local-disk " + 10 + " HDD"
+    disks: "local-disk 100 HDD"
     cpu: 1
   }
   output {
