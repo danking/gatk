@@ -126,8 +126,11 @@ task AssignIds {
   Int samples_per_table = 4000
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:assign_ids"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
+    bash ~{monitoring_script} > monitoring.log &
+
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
@@ -193,6 +196,7 @@ task AssignIds {
   output {
     File gvs_ids_tsv = "gvs_ids.tsv"
     Int max_table_id = read_int("max_table_id")
+    File monitoring_log = "monitoring.log"
   }
 }
 
