@@ -129,11 +129,10 @@ task AssignIds {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
-    bash ~{monitoring_script} > monitoring.log &
+    set -e
+    set -x
 
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
+    bash ~{monitoring_script} > monitoring.log &
 
     # make sure that sample names were actually passed, fail if empty
     num_samples=~{length(sample_names)}
