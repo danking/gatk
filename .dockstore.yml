@@ -142,3 +142,9 @@ workflows:
      filters:
          branches:
              - kl_gvs_walker_for_pgen
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
