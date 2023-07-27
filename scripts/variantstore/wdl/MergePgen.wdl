@@ -9,7 +9,7 @@ task MergePgen {
         String output_file_base_name
     }
 
-    Float disk_in_gb = 50 + 2 * (size(pgen_files, "GB") + size(pvar_files, "GB") + size(psam_files, "GB"))
+    Int disk_in_gb = ceil(50 + 2 * (size(pgen_files, "GB") + size(pvar_files, "GB") + size(psam_files, "GB")))
 
     command <<<
         set -e
