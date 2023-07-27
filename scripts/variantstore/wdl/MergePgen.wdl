@@ -21,7 +21,7 @@ task MergePgen {
             if [ -s ${pgen} ]
             then
                 count=$((count+1))
-                echo -e "${pgen%.pgen}" >> mergelist.txt
+                echo -e -n "${pgen%.pgen}" >> mergelist.txt
                 if [ $count -lt ${#PGEN_ARRAY[@]} ]
                 then
                     echo -e "\n" >> mergelist.txt
