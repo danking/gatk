@@ -2,6 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+
+import java.util.HashMap;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import htsjdk.tribble.bed.BEDFeature;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -23,10 +29,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 
 
 /**
@@ -147,7 +149,6 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
-
     /**
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
@@ -156,10 +157,16 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
             doc = "File to which variants should be written")
     public GATKPath outputVCF = null;
 
+    @Argument(fullName = "ploidy-flag",
+            shortName = "pl",
+            doc = "my doc string")
+    public FeatureDataSource<BEDFeature> ploidyRegions = null;
+
     private VariantContextWriter vcfWriter;
-
     private HaplotypeCallerEngine hcEngine;
+    private final int defaultPloidy = 2;
 
+    private HashMap<Integer, HaplotypeCallerEngine> hcEngineMap = new HashMap<>();
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return HaplotypeCallerEngine.makeStandardHCReadFilters();
@@ -190,7 +197,6 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
                     hcArgs.flowMode.getNameValuePairs(),
                     HaplotypeCallerArgumentCollection.FLOW_GATK_MODE_LONG_NAME);
         }
-
         return null;
     }
 
@@ -250,10 +256,26 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
         hcEngine = buildHaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
 
+        String ploidyString;
+        int ploidyCount;
+
+        for (BEDFeature feature : ploidyRegions) {
+            ploidyString = feature.getName();
+            if (ploidyString == "") ploidyCount = defaultPloidy;
+            else ploidyCount = Integer.parseInt(ploidyString);
+            if (!hcEngineMap.containsKey(ploidyCount)) {
+                HaplotypeCallerArgumentCollection insertArgs = new HaplotypeCallerArgumentCollection();
+                insertArgs.standardArgs.genotypeArgs.samplePloidy = ploidyCount;
+                HaplotypeCallerEngine insertEngine = buildHaplotypeCallerEngine(insertArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
+                hcEngineMap.put(ploidyCount, insertEngine);
+            }
+        }
+
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
+
     }
 
     protected HaplotypeCallerEngine buildHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, final AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createOutputBamIndex, final boolean createOutputBamMD5, final SAMFileHeader headerForReads, final CachingIndexedFastaSequenceFile referenceReader, final VariantAnnotatorEngine variantAnnotatorEngine) {
@@ -266,7 +288,15 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        hcEngine.callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
+        boolean found = false;
+        for (BEDFeature feature : ploidyRegions) {
+            if (feature.overlaps(referenceContext.getInterval())) {
+                hcEngineMap.get(Integer.parseInt(feature.getName())).callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
+                found = true;
+                break;
+            }
+        }
+        if (!found) hcEngineMap.get(defaultPloidy).callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
     }
 
     @Override
@@ -278,6 +308,10 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
         if ( hcEngine != null ) {
             hcEngine.shutdown();
         }
-
+        for (HaplotypeCallerEngine currentEngine : hcEngineMap.values()) {
+            if (currentEngine != null) {
+                currentEngine.shutdown();
+            }
+        }
     }
 }
