@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
+import picard.sam.util.Pair;
 
 import java.util.*;
 
@@ -28,28 +29,29 @@ public class Event implements Locatable {
         Utils.validateArg(ref.isReference(), "ref is not ref");
         this.contig = contig;
         this.start = start;
-        if(!(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref, alt))){
-            List<Allele> minimalAlleles = makeMinimalRepresentation(ref, alt);
-            refAllele = minimalAlleles.get(0);
-            altAllele = minimalAlleles.get(1);
-        } else {
+        //check for minimial representation
+        if(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref.getBases(), alt.getBases())){
             refAllele = ref;
             altAllele = alt;
+        } else {
+            Pair<Allele, Allele> minimalAlleles = makeMinimalRepresentation(ref, alt);
+            refAllele = minimalAlleles.getLeft();
+            altAllele = minimalAlleles.getRight();
         }
         stop = start + refAllele.length() - 1;
     }
 
-    private static List<Allele> makeMinimalRepresentation(Allele ref, Allele alt) {
+    private static Pair<Allele, Allele> makeMinimalRepresentation(Allele ref, Allele alt) {
         Utils.validateArg(!Arrays.equals(ref.getBases(), alt.getBases()), "ref and alt alleles are identical");
         byte[] newRefBases = ref.getBases();
         byte[] newAltBases = alt.getBases();
-        while (!(newRefBases.length == 1 || newAltBases.length == 1 || differentLastBase(newRefBases, newAltBases))) {
+        while (newRefBases.length != 1 && newAltBases.length != 1 && !differentLastBase(newRefBases, newAltBases)) {
             newRefBases = Arrays.copyOf(ref.getBases(), ref.length() - 1);
             newAltBases = Arrays.copyOf(alt.getBases(), alt.length() - 1);
         }
         Allele newRefAllele = Allele.create(newRefBases, true);
         Allele newAltAllele = Allele.create(newAltBases, false);
-        return(List.of(newRefAllele, newAltAllele));
+        return(new Pair<>(newRefAllele, newAltAllele));
     }
 
     public static Event ofWithoutAttributes(final VariantContext vc) {
@@ -116,12 +118,6 @@ public class Event implements Locatable {
     @Override
     public int hashCode() {
         return new HashCodeBuilder().append(start).append(refAllele).append(altAllele).hashCode();
-    }
-
-    private static boolean differentLastBase(final Allele ref, final Allele alt) {
-        final byte[] refBases = ref.getBases();
-        final byte[] altBases = alt.getBases();
-        return differentLastBase(refBases, altBases);
     }
 
     private static boolean differentLastBase(final byte[] ref, final byte[] alt) {
