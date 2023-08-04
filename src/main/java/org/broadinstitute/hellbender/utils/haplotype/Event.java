@@ -29,7 +29,7 @@ public class Event implements Locatable {
         Utils.validateArg(ref.isReference(), "ref is not ref");
         this.contig = contig;
         this.start = start;
-        //check for minimial representation
+        //check for minimal representation
         if(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref.getBases(), alt.getBases())){
             refAllele = ref;
             altAllele = alt;
@@ -41,6 +41,12 @@ public class Event implements Locatable {
         stop = start + refAllele.length() - 1;
     }
 
+    /**
+     * Returns a pair of alleles that are in minimal representation (removes identical suffixes)
+     * @param ref allele not in minimal representation
+     * @param alt allele not in minimal representation
+     * @return pair of alleles in minimal representation
+     */
     private static Pair<Allele, Allele> makeMinimalRepresentation(Allele ref, Allele alt) {
         Utils.validateArg(!Arrays.equals(ref.getBases(), alt.getBases()), "ref and alt alleles are identical");
         byte[] newRefBases = ref.getBases();
