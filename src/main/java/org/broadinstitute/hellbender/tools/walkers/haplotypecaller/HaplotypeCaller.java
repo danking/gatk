@@ -2,12 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
-
-import java.util.HashMap;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import htsjdk.tribble.bed.BEDFeature;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -29,6 +23,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 
 /**
@@ -129,6 +127,19 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
  * argument. Note however that very high ploidies (such as are encountered in large pooled experiments) may cause
  * performance challenges including excessive slowness. We are working on resolving these limitations.</p>
  *
+ * <p>For having variable ploidy in different regions, like making haploid calls outside the PAR region on chrX or chrY,
+ * see the --ploidy-regions flag. The -ploidy flag sets the default ploidy to use everywhere, and --ploidy-regions
+ * should be a .bed or .interval_list with "name" column containing the desired ploidy to use in that region
+ * when genotyping. Note that variants near the boundary may not have the matching ploidy since the ploidy used will
+ * be determined using the following precedence: </p>
+ * <ol>
+ *     <li>ploidy given in --ploidy-regions for all intervals overlapping the active region when calling your variant
+ *     (with ties broken by order in interval file); note ploidy interval may only overlap the active region and determine
+ *     the ploidy of your variant even if the end coordinate written for your variant lies outside the given region;</li>
+ *     <li>ploidy given via global -ploidy flag;</li>
+ *     <li>ploidy determined by the default global built-in constant for humans (2).</li>
+ * </ol>
+ *
  * <h3>Additional Notes</h3>
  * <ul>
  *     <li>When working with PCR-free data, be sure to set `-pcr_indel_model NONE` (see argument below).</li>
@@ -149,6 +160,7 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
+
     /**
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
@@ -157,16 +169,10 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
             doc = "File to which variants should be written")
     public GATKPath outputVCF = null;
 
-    @Argument(fullName = "ploidy-flag",
-            shortName = "pl",
-            doc = "my doc string")
-    public FeatureDataSource<BEDFeature> ploidyRegions = null;
-
     private VariantContextWriter vcfWriter;
-    private HaplotypeCallerEngine hcEngine;
-    private final int defaultPloidy = 2;
 
-    private HashMap<Integer, HaplotypeCallerEngine> hcEngineMap = new HashMap<>();
+    private HaplotypeCallerEngine hcEngine;
+
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return HaplotypeCallerEngine.makeStandardHCReadFilters();
@@ -197,6 +203,7 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
                     hcArgs.flowMode.getNameValuePairs(),
                     HaplotypeCallerArgumentCollection.FLOW_GATK_MODE_LONG_NAME);
         }
+
         return null;
     }
 
@@ -256,26 +263,10 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
         hcEngine = buildHaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
 
-        String ploidyString;
-        int ploidyCount;
-
-        for (BEDFeature feature : ploidyRegions) {
-            ploidyString = feature.getName();
-            if (ploidyString == "") ploidyCount = defaultPloidy;
-            else ploidyCount = Integer.parseInt(ploidyString);
-            if (!hcEngineMap.containsKey(ploidyCount)) {
-                HaplotypeCallerArgumentCollection insertArgs = new HaplotypeCallerArgumentCollection();
-                insertArgs.standardArgs.genotypeArgs.samplePloidy = ploidyCount;
-                HaplotypeCallerEngine insertEngine = buildHaplotypeCallerEngine(insertArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
-                hcEngineMap.put(ploidyCount, insertEngine);
-            }
-        }
-
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary, createOutputVariantIndex, createOutputVariantMD5, outputSitesOnlyVCFs);
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
-
     }
 
     protected HaplotypeCallerEngine buildHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, final AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createOutputBamIndex, final boolean createOutputBamMD5, final SAMFileHeader headerForReads, final CachingIndexedFastaSequenceFile referenceReader, final VariantAnnotatorEngine variantAnnotatorEngine) {
@@ -288,15 +279,7 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        boolean found = false;
-        for (BEDFeature feature : ploidyRegions) {
-            if (feature.overlaps(referenceContext.getInterval())) {
-                hcEngineMap.get(Integer.parseInt(feature.getName())).callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
-                found = true;
-                break;
-            }
-        }
-        if (!found) hcEngineMap.get(defaultPloidy).callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
+        hcEngine.callRegion(region, featureContext, referenceContext).forEach(vcfWriter::add);
     }
 
     @Override
@@ -308,10 +291,6 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
         if ( hcEngine != null ) {
             hcEngine.shutdown();
         }
-        for (HaplotypeCallerEngine currentEngine : hcEngineMap.values()) {
-            if (currentEngine != null) {
-                currentEngine.shutdown();
-            }
-        }
+
     }
 }

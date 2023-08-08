@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.tribble.IntervalFileFeature;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -26,6 +28,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.MinimalGenotypingEn
 import org.broadinstitute.hellbender.tools.walkers.genotyper.OutputMode;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
@@ -83,8 +86,26 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     protected final OutputStreamWriter assemblyDebugOutStream;
 
-    // the genotyping engine for the isActive() determination
-    private MinimalGenotypingEngine activeRegionEvaluationGenotyperEngine = null;
+    /**
+     * List of interval file entries including regions and custom ploidy values to apply in that region.
+     */
+    protected final List<IntervalFileFeature> ploidyRegions = new ArrayList<>();
+
+    /**
+     * List of all custom ploidies provided by user
+     */
+    private final LinkedHashSet<String> allCustomPloidies;
+
+    /**
+     * The default genotyping engine for the isActive() determination
+     */
+    private MinimalGenotypingEngine defaultActiveRegionEvaluationGenotyperEngine = null;
+
+    /**
+     * Map of user-provided ploidy values to corresponding active region genotyper. Values are checked as valid Integers during
+     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
+     */
+    private final HashMap<String, MinimalGenotypingEngine> ploidyToActiveEvaluationGenotyper = new HashMap<>();
 
     protected ReadThreadingAssembler assemblyEngine = null;
 
@@ -93,7 +114,16 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     // If we are in PDHMM mode we need to hold onto two likelihoods engines for the fallback
     private ReadLikelihoodCalculationEngine pdhmmLikelihoodCalculationEngine = null;
 
-    protected HaplotypeCallerGenotypingEngine genotypingEngine = null;
+    /**
+     * The default genotyping engine to use for actual variant calling and genotyping in an active region.
+     */
+    protected HaplotypeCallerGenotypingEngine defaultGenotypingEngine = null;
+
+    /**
+     * Map of user-provided ploidy values to corresponding genotyper. Values are checked as valid Integers during
+     * initialization, but Strings are used as keys to avoid parsing repeatedly during runtime.
+     */
+    protected final HashMap<String, HaplotypeCallerGenotypingEngine> ploidyToGenotyperMap = new HashMap<>();
 
     private VariantAnnotatorEngine annotationEngine = null;
 
@@ -196,6 +226,26 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             HaplotypeCallerGenotypingDebugger.initialize(hcArgs.genotyperDebugOutStream);
         }
 
+        // Parse the user provided custom ploidy regions into ploidyRegions object
+        if (this.hcArgs.ploidyRegions != null) {
+            this.hcArgs.ploidyRegions.forEach(this.ploidyRegions::add);
+        }
+
+        // Check that all name fields in ploidyRegions are positive integers
+        String INVALID_PLOIDY_REGIONS_ERROR = "Custom ploidy-regions input must have positive integer values in name column.";
+        for (final IntervalFileFeature feature : ploidyRegions) {
+            try {
+                Integer.parseInt(feature.getName());
+            } catch (NumberFormatException e) {
+                throw new UserException(INVALID_PLOIDY_REGIONS_ERROR);
+            }
+            if (Integer.parseInt(feature.getName()) < 1) {
+                throw new UserException(INVALID_PLOIDY_REGIONS_ERROR);
+            }
+        }
+
+        this.allCustomPloidies = this.ploidyRegions.stream().map(IntervalFileFeature::getName).collect(Collectors.toCollection(LinkedHashSet::new));
+
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         initialize(createBamOutIndex, createBamOutMD5);
     }
@@ -242,8 +292,16 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
-        genotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
-        genotypingEngine.setAnnotationEngine(annotationEngine);
+        defaultGenotypingEngine = new HaplotypeCallerGenotypingEngine(hcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
+        defaultGenotypingEngine.setAnnotationEngine(annotationEngine);
+
+        // Create other custom genotyping engines if user provided ploidyRegions
+        for (final String ploidy : this.allCustomPloidies) {
+            HaplotypeCallerArgumentCollection newPloidyHcArgs = hcArgs.copyWithNewPloidy(Integer.parseInt(ploidy));
+            HaplotypeCallerGenotypingEngine newGenotypingEngine = new HaplotypeCallerGenotypingEngine(newPloidyHcArgs, samplesList, ! hcArgs.doNotRunPhysicalPhasing, hcArgs.applyBQD);
+            newGenotypingEngine.setAnnotationEngine(annotationEngine);
+            this.ploidyToGenotyperMap.put(ploidy, newGenotypingEngine);
+        }
 
         boolean isFlowBased = (hcArgs.likelihoodArgs.likelihoodEngineImplementation == ReadLikelihoodCalculationEngine.Implementation.FlowBased)
                 || (hcArgs.likelihoodArgs.likelihoodEngineImplementation == ReadLikelihoodCalculationEngine.Implementation.FlowBasedHMM);
@@ -381,8 +439,18 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // Seems that at least with some test data we can lose genuine haploid variation if we use ploidy == 1
         activeRegionArgs.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, hcArgs.standardArgs.genotypeArgs.samplePloidy);
 
-        activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(activeRegionArgs, samplesList);
-        activeRegionEvaluationGenotyperEngine.setLogger(logger);
+        defaultActiveRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(activeRegionArgs, samplesList);
+        defaultActiveRegionEvaluationGenotyperEngine.setLogger(logger);
+
+        // If custom ploidyRegions provided, create corresponding map for active region determination genotyper
+        for (final String ploidy : this.allCustomPloidies) {
+            StandardCallerArgumentCollection newPloidyActiveArgs = new StandardCallerArgumentCollection();
+            newPloidyActiveArgs.copyStandardCallerArgsFrom(activeRegionArgs);
+            newPloidyActiveArgs.genotypeArgs.samplePloidy = Math.max(MINIMUM_PUTATIVE_PLOIDY_FOR_ACTIVE_REGION_DISCOVERY, Integer.parseInt(ploidy)); // Should be safe because parsing check done in constructor before this
+            MinimalGenotypingEngine newActiveGenotypingEngine = new MinimalGenotypingEngine(newPloidyActiveArgs, samplesList);
+            newActiveGenotypingEngine.setLogger(logger);
+            this.ploidyToActiveEvaluationGenotyper.put(ploidy, newActiveGenotypingEngine);
+        }
     }
 
     /**
@@ -455,7 +523,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.addAll(defaultToolHeaderLines);
 
-        headerInfo.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
+        headerInfo.addAll(defaultGenotypingEngine.getAppropriateVCFInfoHeaders());
         // all annotation fields from VariantAnnotatorEngine
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(emitReferenceConfidence()));
         // all callers need to add these standard annotation header lines
@@ -524,6 +592,34 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     /**
+     * Selects appropriate active region genotyping engine for given region
+     * @param region Current region of interest
+     * @return Active genotyping engine with correct ploidy setting for given region
+     */
+    private MinimalGenotypingEngine getLocalActiveGenotyper(Locatable region) {
+        for (final IntervalFileFeature feature : this.ploidyRegions) {
+            if (IntervalUtils.overlaps(region, feature)) {
+                return this.ploidyToActiveEvaluationGenotyper.get(feature.getName());
+            }
+        }
+        return this.defaultActiveRegionEvaluationGenotyperEngine;
+    }
+
+    /**
+     * Selects appropriate genotyping engine for given region.
+     * @param region Current region of interest, e.g. AssemblyRegion
+     * @return Genotyping engine with correct ploidy setting for given region
+     */
+    protected HaplotypeCallerGenotypingEngine getLocalGenotypingEngine(Locatable region) {
+        for (final IntervalFileFeature feature : this.ploidyRegions) {
+            if (IntervalUtils.overlaps(region, feature)) {
+                return this.ploidyToGenotyperMap.get(feature.getName());
+            }
+        }
+        return this.defaultGenotypingEngine;
+    }
+
+    /**
      * Given a pileup, returns an ActivityProfileState containing the probability (0.0 to 1.0) that it's an "active" site.
      *
      * Note that the current implementation will always return either 1.0 or 0.0, as it relies on the smoothing in
@@ -537,6 +633,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
+        MinimalGenotypingEngine localEngine = getLocalActiveGenotyper(ref);
+
         if (forceCallingAllelesPresent && features.getValues(hcArgs.alleles, ref).stream().anyMatch(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())) {
             return new ActivityProfileState(ref.getInterval(), 1.0);
         }
@@ -546,7 +644,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return new ActivityProfileState(ref.getInterval(), 0.0);
         }
 
-        final int ploidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
+        final int ploidy = localEngine.getConfiguration().genotypeArgs.samplePloidy;
         final List<Allele> noCall = GATKVariantContextUtils.noCallAlleles(ploidy); // used to noCall all genotypes until the exact model is applied
 
         final Map<String, AlignmentContext> splitContexts;
@@ -565,7 +663,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 sample.getValue().getBasePileup().forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), readsHeader, ref));
             }
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
-            final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
+            final int activeRegionDetectionHackishSamplePloidy = localEngine.getConfiguration().genotypeArgs.samplePloidy;
             final double[] genotypeLikelihoods = ((RefVsAnyResult) referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(
                     activeRegionDetectionHackishSamplePloidy,
                     sample.getValue().getBasePileup(), ref.getBase(),
@@ -579,9 +677,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if (genotypes.size() == 1) {
             // Faster implementation using exact marginalization instead of iteration
-            isActiveProb = activeRegionEvaluationGenotyperEngine.calculateSingleSampleRefVsAnyActiveStateProfileValue(genotypes.get(0).getLikelihoods().getAsVector());
+            isActiveProb = localEngine.calculateSingleSampleRefVsAnyActiveStateProfileValue(genotypes.get(0).getLikelihoods().getAsVector());
         } else {
-            final VariantContext vcOut = activeRegionEvaluationGenotyperEngine.calculateGenotypes(new VariantContextBuilder("HCisActive!", context.getContig(), context.getLocation().getStart(), context.getLocation().getEnd(), alleles).genotypes(genotypes).make());
+            final VariantContext vcOut = localEngine.calculateGenotypes(new VariantContextBuilder("HCisActive!", context.getContig(), context.getLocation().getStart(), context.getLocation().getEnd(), alleles).genotypes(genotypes).make());
             isActiveProb = vcOut == null ? 0.0 : QualityUtils.qualToProb(vcOut.getPhredScaledQual());
         }
 
@@ -607,6 +705,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return List of variants discovered in the region (may be empty)
      */
     public List<VariantContext> callRegion(final AssemblyRegion region, final FeatureContext features, final ReferenceContext referenceContext) {
+        final HaplotypeCallerGenotypingEngine localEngine = getLocalGenotypingEngine(region);
+
         if ( hcArgs.justDetermineActiveRegions ) {
             // we're benchmarking ART and/or the active region determination code in the HC, just leave without doing any work
             return NO_CALLS;
@@ -799,7 +899,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (hcArgs.filterAlleles) {
             logger.debug("Filtering alleles");
 
-            AlleleFilteringHC alleleFilter = new AlleleFilteringHC(hcArgs, assemblyDebugOutStream, genotypingEngine);
+            AlleleFilteringHC alleleFilter = new AlleleFilteringHC(hcArgs, assemblyDebugOutStream, localEngine);
             //need to update haplotypes to find the alleles
             EventMap.buildEventMapsForHaplotypes(readLikelihoods.alleles(),
                     assemblyResult.getFullReferenceWithPadding(),
@@ -849,7 +949,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        final CalledHaplotypes calledHaplotypes = genotypingEngine.assignGenotypeLikelihoods(
+        final CalledHaplotypes calledHaplotypes = localEngine.assignGenotypeLikelihoods(
                 haplotypes,
                 subsettedReadLikelihoodsFinal,
                 perSampleFilteredReadList,
@@ -890,7 +990,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        subsettedReadLikelihoodsFinal, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
+                        subsettedReadLikelihoodsFinal, localEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
                         VCpriors));
 
                 trimmingResult.nonVariantRightFlankRegion().ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank, false, VCpriors)));
@@ -948,6 +1048,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return a list of variant contexts (can be empty) to emit for this ref region
      */
     protected List<VariantContext> referenceModelForNoVariation(final AssemblyRegion region, final boolean needsToBeFinalized, final List<VariantContext> VCpriors) {
+        final HaplotypeCallerGenotypingEngine localEngine = getLocalGenotypingEngine(region);
         if ( emitReferenceConfidence() ) {
             if ( needsToBeFinalized ) {
                 AssemblyBasedCallerUtils.finalizeRegion(region,
@@ -967,7 +1068,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, AssemblyBasedCallerUtils.createDummyStratifiedReadMap(refHaplotype, samplesList, readsHeader, region),
-                    genotypingEngine.getPloidyModel(), Collections.emptyList(), hcArgs.standardArgs.genotypeArgs.supportVariants != null, VCpriors);
+                    localEngine.getPloidyModel(), Collections.emptyList(), hcArgs.standardArgs.genotypeArgs.supportVariants != null, VCpriors);
         }
         else {
             return NO_CALLS;
