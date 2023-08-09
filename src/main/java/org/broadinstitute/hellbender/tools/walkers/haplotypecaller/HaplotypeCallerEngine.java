@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.RuntimeIOException;
-import htsjdk.tribble.IntervalFileFeature;
+import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -89,7 +89,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     /**
      * List of interval file entries including regions and custom ploidy values to apply in that region.
      */
-    protected final List<IntervalFileFeature> ploidyRegions = new ArrayList<>();
+    protected final List<NamedFeature> ploidyRegions = new ArrayList<>();
 
     /**
      * List of all custom ploidies provided by user
@@ -233,7 +233,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Check that all name fields in ploidyRegions are positive integers
         String INVALID_PLOIDY_REGIONS_ERROR = "Custom ploidy-regions input must have positive integer values in name column.";
-        for (final IntervalFileFeature feature : ploidyRegions) {
+        for (final NamedFeature feature : ploidyRegions) {
             try {
                 Integer.parseInt(feature.getName());
             } catch (NumberFormatException e) {
@@ -244,7 +244,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        this.allCustomPloidies = this.ploidyRegions.stream().map(IntervalFileFeature::getName).collect(Collectors.toCollection(LinkedHashSet::new));
+        this.allCustomPloidies = this.ploidyRegions.stream().map(NamedFeature::getName).collect(Collectors.toCollection(LinkedHashSet::new));
 
         trimmer = new AssemblyRegionTrimmer(assemblyRegionArgs, readsHeader.getSequenceDictionary());
         initialize(createBamOutIndex, createBamOutMD5);
@@ -597,7 +597,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return Active genotyping engine with correct ploidy setting for given region
      */
     private MinimalGenotypingEngine getLocalActiveGenotyper(Locatable region) {
-        for (final IntervalFileFeature feature : this.ploidyRegions) {
+        for (final NamedFeature feature : this.ploidyRegions) {
             if (IntervalUtils.overlaps(region, feature)) {
                 return this.ploidyToActiveEvaluationGenotyper.get(feature.getName());
             }
@@ -611,7 +611,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @return Genotyping engine with correct ploidy setting for given region
      */
     protected HaplotypeCallerGenotypingEngine getLocalGenotypingEngine(Locatable region) {
-        for (final IntervalFileFeature feature : this.ploidyRegions) {
+        for (final NamedFeature feature : this.ploidyRegions) {
             if (IntervalUtils.overlaps(region, feature)) {
                 return this.ploidyToGenotyperMap.get(feature.getName());
             }

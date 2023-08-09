@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import htsjdk.tribble.IntervalFileFeature;
+import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -66,7 +66,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     }
 
     @Argument(fullName = PLOIDY_REGIONS_NAME, shortName = PLOIDY_REGIONS_NAME, doc = "Interval file with column specifying desired ploidy for genotyping models.", optional = true)
-    public FeatureDataSource<IntervalFileFeature> ploidyRegions = null;
+    public FeatureDataSource<NamedFeature> ploidyRegions = null;
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
