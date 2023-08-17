@@ -16,8 +16,8 @@ import java.util.List;
 
 @SuppressWarnings("unused")
 @CommandLineProgramProperties(
-        summary = "(\"ExtractCohortToPgen\") - Filter and extract variants from BigQuery to a PGEN+PSAM+PVAR output.",
-        oneLineSummary = "Tool to extract variants from BigQuery to a PGEN+PSAM+PVAR output for a subset of samples.",
+        summary = "(\"ExtractCohortToPgen\") - Filter and extract variants from BigQuery to a PLINK 2.0 (3 files: PGEN, PSAM, and PVAR) output.",
+        oneLineSummary = "Tool to extract variants from BigQuery to a PLINK 2.0 output for a subset of samples.",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
