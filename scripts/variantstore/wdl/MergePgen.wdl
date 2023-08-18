@@ -1,5 +1,30 @@
 version 1.0
 
+workflow MergePgenWorkflow {
+    input {
+        Array[File] pgen_files
+        Array[File] pvar_files
+        Array[File] psam_files
+        String plink_docker
+        String output_file_base_name
+    }
+
+    call MergePgen {
+        input:
+            pgen_files = pgen_files,
+            pvar_files = pvar_files,
+            psam_files = psam_files,
+            plink_docker = plink_docker,
+            output_file_base_name = output_file_base_name
+    }
+
+    output {
+        File pgen_file = MergePgen.pgen_file
+        File pvar_file = MergePgen.pvar_file
+        File psam_file = MergePgen.psam_file
+    }
+}
+
 task MergePgen {
     input {
         Array[File] pgen_files

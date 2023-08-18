@@ -148,3 +148,9 @@ workflows:
      filters:
          branches:
              - kl_gvs_walker_for_pgen
+   - name: MergePgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgen.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
