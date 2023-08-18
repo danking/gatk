@@ -35,6 +35,7 @@ workflow GvsExtractCallset {
         Int? extract_maxretries_override
         Int? extract_preemptible_override
         String? output_gcs_dir
+        String? split_intervals_extra_args
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         Float x_bed_weight_scaling = 4
@@ -112,6 +113,7 @@ workflow GvsExtractCallset {
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
             output_gcs_dir = output_gcs_dir,
+            split_intervals_extra_args = split_intervals_extra_args,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             gatk_override = gatk_override
