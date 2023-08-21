@@ -88,6 +88,14 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - kl_gvs_walker_for_pgen
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
