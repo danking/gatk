@@ -162,3 +162,9 @@ workflows:
      filters:
          branches:
              - kl_gvs_walker_for_pgen
+   - name: ComparePgenAndVcfScatter
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/pgen_validation/ComparePgenAndVcfScatter.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
