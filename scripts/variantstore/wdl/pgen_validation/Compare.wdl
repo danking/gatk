@@ -24,6 +24,8 @@ task CompareFiles {
         Array[File] expected
     }
 
+    Int disk_in_gb = 2 * ceil(10 + size(actual, "GB") + size(expected, "GB"))
+
     command <<<
         set -e
         ACTUAL_ARRAY=(~{sep=" " actual})
@@ -43,8 +45,8 @@ task CompareFiles {
 
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/klydon/pgen_vcf_comparator:test"
-        memory: "3 GB"
-        disks: "local-disk 500 HDD"
+        memory: "6 GB"
+        disks: "local-disk ${disk_in_gb} HDD"
         preemptible: 3
         cpu: 1
     }
