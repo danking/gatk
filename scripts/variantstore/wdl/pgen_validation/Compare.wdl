@@ -35,7 +35,7 @@ task CompareFiles {
             echo "expected: ${EXPECTED_ARRAY[$i]} , actual: ${ACTUAL_ARRAY[$i]}"
             gunzip "${EXPECTED_ARRAY[$i]}"
             OUTPUT_FILE="$(basename ${ACTUAL_ARRAY[$i]}).diff"
-            java -jar /comparator/pgen_vcf_comparator.jar "${ACTUAL_ARRAY[$i]}" "${EXPECTED_ARRAY[$i]%.gz}" > ${OUTPUT_FILE}
+            java -jar -Xmx5g /comparator/pgen_vcf_comparator.jar "${ACTUAL_ARRAY[$i]}" "${EXPECTED_ARRAY[$i]%.gz}" > ${OUTPUT_FILE}
         done
     >>>
 
