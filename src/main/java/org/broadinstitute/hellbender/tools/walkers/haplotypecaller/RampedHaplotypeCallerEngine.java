@@ -460,7 +460,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     }
 
     private void filter(final CallRegionContext context) {
-        final HaplotypeCallerGenotypingEngine localEngine = getLocalGenotypingEngine(context.region);
+        final HaplotypeCallerGenotypingEngine localGenotypingEngine = getLocalGenotypingEngine(context.region);
 
         try {
             // no need for this step?
@@ -480,7 +480,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
                 context.suspiciousLocations = new HashSet<>();
                 if (hcArgs.filterAlleles) {
                     logger.debug("Filtering alleles");
-                    AlleleFilteringHC alleleFilter = new AlleleFilteringHC(hcArgs, assemblyDebugOutStream, localEngine);
+                    AlleleFilteringHC alleleFilter = new AlleleFilteringHC(hcArgs, assemblyDebugOutStream, localGenotypingEngine);
                     //need to update haplotypes to find the alleles
                     EventMap.buildEventMapsForHaplotypes(context.readLikelihoods.alleles(),
                             context.assemblyResult.getFullReferenceWithPadding(),
@@ -521,7 +521,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
     }
 
     private void genotype(final CallRegionContext context) {
-        final HaplotypeCallerGenotypingEngine localEngine = getLocalGenotypingEngine(context.region);
+        final HaplotypeCallerGenotypingEngine localGenotypingEngine = getLocalGenotypingEngine(context.region);
 
         // no need for this step?
         if ( context.regionVariants != null ) {
@@ -544,7 +544,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
         //  haplotype containing C as reference (and vice versa).  Now this is fine if all possible haplotypes are included
         //  in the genotyping, but we lose information if we select down to a few haplotypes.  [EB]
         List<Haplotype>     haplotypes = context.readLikelihoods.alleles();
-        final CalledHaplotypes calledHaplotypes = localEngine.assignGenotypeLikelihoods(
+        final CalledHaplotypes calledHaplotypes = localGenotypingEngine.assignGenotypeLikelihoods(
                 haplotypes,
                 context.readLikelihoods,
                 perSampleFilteredReadList,
@@ -584,7 +584,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(context.assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), context.assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        context.readLikelihoods, localEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
+                        context.readLikelihoods, localGenotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
                         context.VCpriors));
 
                 context.nonVariantRightFlankRegion.ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank, false, context.VCpriors)));

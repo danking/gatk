@@ -325,7 +325,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     }
 
     // Private constructor for use in copyWithNewPloidy
-    // Allows you to make new instances of hcArgs with synced fields except for genotyper ploidy
+    // Allows you to make new instances of hcArgs with identical fields except for genotyper ploidy
     private HaplotypeCallerArgumentCollection(int ploidy) {
         this.standardArgs.genotypeArgs.samplePloidy = ploidy;
     }
