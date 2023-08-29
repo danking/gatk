@@ -36,7 +36,7 @@ task Convert {
         Array[File] psams
     }
 
-    Int disk_in_gb = ceil(10 + 3 * (size(pgens, "GB") + size(pvars, "GB") + size(psams, "GB")))
+    Int disk_in_gb = ceil(10 + 7 * (size(pgens, "GB") + size(pvars, "GB") + size(psams, "GB")))
 
     command <<<
         set -e
@@ -55,7 +55,7 @@ task Convert {
 
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/klydon/plink2:test"
-        memory: "3 GB"
+        memory: "4 GB"
         disks: "local-disk ${disk_in_gb} HDD"
         preemptible: 3
         cpu: 1
