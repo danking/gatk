@@ -634,9 +634,9 @@ task CountSuperpartitions {
     }
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
@@ -649,6 +649,7 @@ task CountSuperpartitions {
     }
     output {
         Int num_superpartitions = read_int('num_superpartitions.txt')
+        File monitoring_log = "monitoring.log"
     }
 }
 
