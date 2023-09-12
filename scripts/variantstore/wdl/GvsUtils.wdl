@@ -636,8 +636,6 @@ task CountSuperpartitions {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bash ~{monitoring_script} > monitoring.log &
-
         bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
