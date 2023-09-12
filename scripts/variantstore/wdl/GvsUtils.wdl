@@ -649,7 +649,6 @@ task CountSuperpartitions {
     }
     output {
         Int num_superpartitions = read_int('num_superpartitions.txt')
-        File monitoring_log = "monitoring.log"
     }
 }
 
