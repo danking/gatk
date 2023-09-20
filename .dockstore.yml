@@ -291,6 +291,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1052_imputing_gq40
          tags:
              - /.*/
    - name: GvsQuickstartIntegration

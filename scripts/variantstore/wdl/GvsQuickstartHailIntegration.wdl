@@ -8,12 +8,12 @@ workflow GvsQuickstartHailIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
-        Boolean is_wgs
+        Boolean is_wgs = true
         File? interval_list
         File? interval_weights_bed
         Boolean use_VQSR_lite = true
         Boolean use_classic_VQSR = true
-        Boolean extract_do_not_filter_override
+        Boolean extract_do_not_filter_override = false
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
 
@@ -24,7 +24,7 @@ workflow GvsQuickstartHailIntegration {
         String? gatk_docker
 
         String? gatk_override
-        String expected_output_prefix
+        String expected_output_prefix = "vs_1052_imputing_gq40"
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
         String? vcf_index_files_column_name
@@ -52,7 +52,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
-            drop_state = "NONE",
+            drop_state = "FORTY",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
@@ -89,16 +89,16 @@ workflow GvsQuickstartHailIntegration {
             variants_docker = effective_variants_docker,
     }
 
-    call CreateAndTieOutVds {
-        input:
-            git_branch_or_tag = git_branch_or_tag,
-            use_VQSR_lite = use_VQSR_lite,
-            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
-            vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
-            tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
-            tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-    }
+#    call CreateAndTieOutVds {
+#        input:
+#            git_branch_or_tag = git_branch_or_tag,
+#            use_VQSR_lite = use_VQSR_lite,
+#            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+#            vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+#            tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
+#            tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+#            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+#    }
 
     output {
         Array[File] output_vcfs = GvsQuickstartVcfIntegration.output_vcfs
