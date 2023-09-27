@@ -7,6 +7,7 @@ workflow MergePgenWorkflow {
         Array[File] psam_files
         String plink_docker
         String output_file_base_name
+        Int? threads
     }
 
     call MergePgen {
@@ -15,7 +16,8 @@ workflow MergePgenWorkflow {
             pvar_files = pvar_files,
             psam_files = psam_files,
             plink_docker = plink_docker,
-            output_file_base_name = output_file_base_name
+            output_file_base_name = output_file_base_name,
+            threads = threads
     }
 
     output {
@@ -32,8 +34,10 @@ task MergePgen {
         Array[File] psam_files
         String plink_docker
         String output_file_base_name
+        Int threads = 1
     }
 
+    Int cpu = threads + 1
     Int disk_in_gb = ceil(50 + 2 * (size(pgen_files, "GB") + size(pvar_files, "GB") + size(psam_files, "GB")))
 
     command <<<
@@ -66,7 +70,7 @@ task MergePgen {
             ;;
         *)
             echo "${count} pgen files, merging"
-            plink2 --pmerge-list mergelist.txt --out ~{output_file_base_name}
+            plink2 --pmerge-list mergelist.txt --threads ~{threads} --out ~{output_file_base_name}
             ;;
         esac
 
@@ -83,6 +87,6 @@ task MergePgen {
         memory: "12 GB"
         disks: "local-disk ${disk_in_gb} HDD"
         bootDiskSizeGb: 15
-        cpu: 2
+        cpu: "${cpu}"
     }
 }
