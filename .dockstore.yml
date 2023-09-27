@@ -162,6 +162,12 @@ workflows:
      filters:
          branches:
              - kl_gvs_walker_for_pgen
+   - name: MergePgenHierarchicalPython
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/hierarchical_pgen_merge/MergePgenHierarchicalPython.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
    - name: ComparePgenAndVcfScatter
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/pgen_validation/ComparePgenAndVcfScatter.wdl
