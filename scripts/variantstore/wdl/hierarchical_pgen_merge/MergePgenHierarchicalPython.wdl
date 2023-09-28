@@ -73,7 +73,7 @@ task MergePgen {
             ;;
         *)
             echo "${count} pgen files, merging"
-            python3 hierarchical_plink_merge.py -d ~{depth} -w ~{width} mergelist.txt -o ~{output_file_base_name}
+            python3 /plink_merge/hierarchical_plink_merge.py -d ~{depth} -w ~{width} mergelist.txt -o ~{output_file_base_name}
             ;;
         esac
 
