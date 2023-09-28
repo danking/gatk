@@ -37,15 +37,40 @@ task MergePgen {
         Int threads = 1
     }
 
+    parameter_meta {
+        pgen_files: {
+            localization_optional: true
+        }
+        pvar_files: {
+            localization_optional: true
+        }
+        psam_files: {
+            localization_optional: true
+        }
+    }
+
     Int cpu = threads + 1
     Int disk_in_gb = ceil(50 + 2 * (size(pgen_files, "GB") + size(pvar_files, "GB") + size(psam_files, "GB")))
 
     command <<<
         set -e
+
+        # Download files using gsutil
+        mkdir pgen_dir
+
         PGEN_ARRAY=(~{sep=" " pgen_files})
+        printf "%s\n" "${PGEN_ARRAY[@]}" | gsutil -m cp -I pgen_dir
+
+        PSAM_ARRAY=(~{sep=" " psam_files})
+        printf "%s\n" "${PSAM_ARRAY[@]}" | gsutil -m cp -I pgen_dir
+
+        PVAR_ARRAY=(~{sep=" " pvar_files})
+        printf "%s\n" "${PVAR_ARRAY[@]}" | gsutil -m cp -I pgen_dir
+
+        # Create a file with a list of all the pgen basenames for merging
         touch mergelist.txt
         count=0
-        for pgen in "${PGEN_ARRAY[@]}"
+        for pgen in pgen_dir/*.pgen
         do
             if [ -s ${pgen} ]
             then
