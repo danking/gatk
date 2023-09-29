@@ -346,7 +346,7 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
+             - vs_1066_hail_oom_why
          tags:
              - /.*/
    - name: MitochondriaPipeline
