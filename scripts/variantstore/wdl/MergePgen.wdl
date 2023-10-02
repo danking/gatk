@@ -7,6 +7,7 @@ workflow MergePgenWorkflow {
         Array[File] psam_files
         String plink_docker
         String output_file_base_name
+        Int merge_disk_size
         Int? threads
     }
 
@@ -17,6 +18,7 @@ workflow MergePgenWorkflow {
             psam_files = psam_files,
             plink_docker = plink_docker,
             output_file_base_name = output_file_base_name,
+            disk_in_gb = merge_disk_size,
             threads = threads
     }
 
@@ -34,6 +36,7 @@ task MergePgen {
         Array[File] psam_files
         String plink_docker
         String output_file_base_name
+        Int disk_in_gb
         Int threads = 1
     }
 
@@ -50,7 +53,6 @@ task MergePgen {
     }
 
     Int cpu = threads + 1
-    Int disk_in_gb = ceil(50 + 2 * (size(pgen_files, "GB") + size(pvar_files, "GB") + size(psam_files, "GB")))
 
     command <<<
         set -e
