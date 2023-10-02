@@ -164,7 +164,7 @@ task MakeFileLists {
         PSAM_ARRAY=(~{sep=" " psam_files})
         PVAR_ARRAY=(~{sep=" " pvar_files})
 
-        for i in "${PGEN_ARRAY[@]}"
+        for i in "${!PGEN_ARRAY[@]}"
         do
             echo "${PGEN_ARRAY[$i]}" >> pgen_list.txt
             echo "${PSAM_ARRAY[$i]}" >> psam_list.txt
