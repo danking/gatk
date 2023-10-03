@@ -178,18 +178,18 @@ task MakeFileLists {
             # Loop through arrays and add them to maps with the number prefix as the key
             for i in "${!PGEN_ARRAY[@]}"
             do
-                PGEN_NUM=$((echo '${PGEN_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                PGEN_NUM=$(echo '${PGEN_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
                 pgen_map["$PGEN_NUM"]='${PGEN_ARRAY[$i]}'
-                PSAM_NUM=$((echo '${PSAM_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                PSAM_NUM=$(echo '${PSAM_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
                 psam_map["$PSAM_NUM"]='${PSAM_ARRAY[$i]}'
-                PVAR_NUM=$((echo '${PVAR_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                PVAR_NUM=$(echo '${PVAR_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
                 pvar_map["$PVAR_NUM"]='${PVAR_ARRAY[$i]}'
             done
 
             # Sort the keys numerically
-            SORTED_PGEN_NUM=$((printf "%s\n" "${!pgen_map[@]}" | sort -n))
-            SORTED_PSAM_NUM=$((printf "%s\n" "${!psam_map[@]}" | sort -n))
-            SORTED_PVAR_NUM=$((printf "%s\n" "${!pvar_map[@]}" | sort -n))
+            SORTED_PGEN_NUM=($(printf "%s\n" "${!pgen_map[@]}" | sort -n))
+            SORTED_PSAM_NUM=($(printf "%s\n" "${!psam_map[@]}" | sort -n))
+            SORTED_PVAR_NUM=($(printf "%s\n" "${!pvar_map[@]}" | sort -n))
 
             # Write to files
             for num in "${SORTED_PGEN_NUM[@]}"
