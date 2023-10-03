@@ -16,7 +16,8 @@ workflow MergePgenWorkflow {
         input:
             pgen_files = pgen_files,
             psam_files = psam_files,
-            pvar_files = pvar_files
+            pvar_files = pvar_files,
+            prefix_num_sorted = true
     }
 
     call SplitFileLists {
@@ -141,6 +142,8 @@ task MakeFileLists {
         Array[File] pgen_files
         Array[File] pvar_files
         Array[File] psam_files
+
+        Boolean prefix_num_sorted = false
     }
 
     parameter_meta {
@@ -164,13 +167,51 @@ task MakeFileLists {
         PSAM_ARRAY=(~{sep=" " psam_files})
         PVAR_ARRAY=(~{sep=" " pvar_files})
 
-        for i in "${!PGEN_ARRAY[@]}"
-        do
-            echo "${PGEN_ARRAY[$i]}" >> pgen_list.txt
-            echo "${PSAM_ARRAY[$i]}" >> psam_list.txt
-            echo "${PVAR_ARRAY[$i]}" >> pvar_list.txt
-        done
+        # Sort the files by the number prefixing the file name
+        if [ ~{prefix_num_sorted} ]
+        then
+            # Maps of numbers to uris
+            declare -A pgen_map
+            declare -A psam_map
+            declare -A pvar_map
 
+            # Loop through arrays and add them to maps with the number prefix as the key
+            for i in "${!PGEN_ARRAY[@]}"
+            do
+                PGEN_NUM=$((echo '${PGEN_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                pgen_map["$PGEN_NUM"]='${PGEN_ARRAY[$i]}'
+                PSAM_NUM=$((echo '${PSAM_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                psam_map["$PSAM_NUM"]='${PSAM_ARRAY[$i]}'
+                PVAR_NUM=$((echo '${PVAR_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//'))
+                pvar_map["$PVAR_NUM"]='${PVAR_ARRAY[$i]}'
+            done
+
+            # Sort the keys numerically
+            SORTED_PGEN_NUM=$((printf "%s\n" "${!pgen_map[@]}" | sort -n))
+            SORTED_PSAM_NUM=$((printf "%s\n" "${!psam_map[@]}" | sort -n))
+            SORTED_PVAR_NUM=$((printf "%s\n" "${!pvar_map[@]}" | sort -n))
+
+            # Write to files
+            for num in "${SORTED_PGEN_NUM[@]}"
+            do
+                echo "${pgen_map[$num]}" >> pgen_list.txt
+            done
+            for num in "${SORTED_PSAM_NUM[@]}"
+            do
+                echo "${psam_map[$num]}" >> psam_list.txt
+            done
+            for num in "${SORTED_PVAR_NUM[@]}"
+            do
+                echo "${pvar_map[$num]}" >> pvar_list.txt
+            done
+        else
+            for i in "${!PGEN_ARRAY[@]}"
+            do
+                echo "${PGEN_ARRAY[$i]}" >> pgen_list.txt
+                echo "${PSAM_ARRAY[$i]}" >> psam_list.txt
+                echo "${PVAR_ARRAY[$i]}" >> pvar_list.txt
+            done
+        fi
     >>>
 
     output {
