@@ -179,11 +179,11 @@ task MakeFileLists {
             for i in "${!PGEN_ARRAY[@]}"
             do
                 PGEN_NUM=$(echo '${PGEN_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                pgen_map["$PGEN_NUM"]='${PGEN_ARRAY[$i]}'
+                pgen_map[$PGEN_NUM]='${PGEN_ARRAY[$i]}'
                 PSAM_NUM=$(echo '${PSAM_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                psam_map["$PSAM_NUM"]='${PSAM_ARRAY[$i]}'
+                psam_map[$PSAM_NUM]='${PSAM_ARRAY[$i]}'
                 PVAR_NUM=$(echo '${PVAR_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                pvar_map["$PVAR_NUM"]='${PVAR_ARRAY[$i]}'
+                pvar_map[$PVAR_NUM]='${PVAR_ARRAY[$i]}'
             done
 
             # Sort the keys numerically
