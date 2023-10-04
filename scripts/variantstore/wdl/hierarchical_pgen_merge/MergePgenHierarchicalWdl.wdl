@@ -178,12 +178,12 @@ task MakeFileLists {
             # Loop through arrays and add them to maps with the number prefix as the key
             for i in "${!PGEN_ARRAY[@]}"
             do
-                PGEN_NUM=$(echo '${PGEN_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                pgen_map[$PGEN_NUM]='${PGEN_ARRAY[$i]}'
-                PSAM_NUM=$(echo '${PSAM_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                psam_map[$PSAM_NUM]='${PSAM_ARRAY[$i]}'
-                PVAR_NUM=$(echo '${PVAR_ARRAY[$i]}' | sed 's/.*\///' | sed 's/\-*.*//')
-                pvar_map[$PVAR_NUM]='${PVAR_ARRAY[$i]}'
+                PGEN_NUM=$(echo "${PGEN_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+                pgen_map[$PGEN_NUM]="${PGEN_ARRAY[$i]}"
+                PSAM_NUM=$(echo "${PSAM_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+                psam_map[$PSAM_NUM]="${PSAM_ARRAY[$i]}"
+                PVAR_NUM=$(echo "${PVAR_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+                pvar_map[$PVAR_NUM]="${PVAR_ARRAY[$i]}"
             done
 
             # Sort the keys numerically
@@ -221,7 +221,7 @@ task MakeFileLists {
     }
 
     runtime {
-        docker: "ubuntu:latest"
+        docker: "ubuntu:22.04"
         memory: "1GB"
         bootDiskSizeGb: 15
     }
@@ -253,7 +253,7 @@ task SplitFileLists {
     }
 
     runtime {
-        docker: "ubuntu:latest"
+        docker: "ubuntu:22.04"
         memory: "1GB"
         bootDiskSizeGb: 15
     }
