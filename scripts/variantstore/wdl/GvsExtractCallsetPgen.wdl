@@ -9,6 +9,14 @@ workflow GvsExtractCallset {
         String project_id
         String call_set_identifier
 
+        # Chromosome code corresponding to the set of contig names used by plink that matches those used by the
+        # reference
+        String pgen_chromosome_code = "chrM"
+        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written
+        Int max_alt_alleles = 254
+        # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
+        Boolean lenient_ploidy_validation = false
+
         String cohort_project_id = project_id
         String cohort_dataset_name = dataset_name
         Boolean do_not_filter_override = false
@@ -163,6 +171,9 @@ workflow GvsExtractCallset {
                 go                                 = select_first([ValidateFilterSetName.done, true]),
                 dataset_name                       = dataset_name,
                 call_set_identifier                = call_set_identifier,
+                pgen_chromosome_code               = pgen_chromosome_code,
+                max_alt_alleles                    = max_alt_alleles,
+                lenient_ploidy_validation          = lenient_ploidy_validation,
                 use_VQSR_lite                      = use_VQSR_lite,
                 gatk_override                      = gatk_override,
                 reference                          = reference,
@@ -239,6 +250,14 @@ task ExtractTask {
 
         String dataset_name
         String call_set_identifier
+
+        # Chromosome code corresponding to the set of contig names used by plink that matches those used by the
+        # reference
+        String pgen_chromosome_code
+        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written
+        Int? max_alt_alleles
+        # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
+        Boolean? lenient_ploidy_validation
 
         Boolean use_VQSR_lite
 
@@ -334,7 +353,12 @@ task ExtractTask {
         --wdl-step GvsExtractCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
-        ~{cost_observability_line}
+        ~{cost_observability_line} \
+        --writer-log-file writer.log \
+        --pgen-chromosome-code ~{pgen_chromosome_code} \
+        --max-alt-alleles ~{max_alt_alleles} \
+        ~{true='--lenient-ploidy-validation' false='' lenient_ploidy_validation}
+
 
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
@@ -384,6 +408,7 @@ task ExtractTask {
         File output_psam = "~{output_pgen_basename}.psam"
         Float output_psam_bytes = read_float("psam_bytes.txt")
         String manifest = read_string("manifest.txt")
+        File writer_log = "writer.log"
         File monitoring_log = "monitoring.log"
     }
 }

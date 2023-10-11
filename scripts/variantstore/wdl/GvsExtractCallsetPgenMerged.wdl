@@ -11,6 +11,14 @@ workflow GvsExtractCallsetMerged {
         String project_id
         String call_set_identifier
 
+        # Chromosome code corresponding to the set of contig names used by plink that matches those used by the
+        # reference
+        String pgen_chromosome_code = "chrM"
+        # Max number of alt alleles a site can have. If a site exceeds this number, it will not be written
+        Int max_alt_alleles = 254
+        # If true, does not throw an exception for samples@sites with unsupported ploidy (codes it as missing instead)
+        Boolean lenient_ploidy_validation = false
+
         String cohort_project_id = project_id
         String cohort_dataset_name = dataset_name
         Boolean do_not_filter_override = false
@@ -54,6 +62,9 @@ workflow GvsExtractCallsetMerged {
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
+            pgen_chromosome_code = pgen_chromosome_code,
+            max_alt_alleles = max_alt_alleles,
+            lenient_ploidy_validation = lenient_ploidy_validation,
             cohort_project_id = cohort_project_id,
             cohort_dataset_name = cohort_dataset_name,
             do_not_filter_override = do_not_filter_override,
