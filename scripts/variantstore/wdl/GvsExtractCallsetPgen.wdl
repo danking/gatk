@@ -332,6 +332,8 @@ task ExtractTask {
         --filter-set-name ~{filter_set_name}'
         fi
 
+        touch writer.log
+
         gatk --java-options "-Xmx9g" \
         ExtractCohortToPgen \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
