@@ -162,12 +162,6 @@ workflows:
      filters:
          branches:
              - kl_gvs_walker_for_pgen
-   - name: MergePgenHierarchicalPython
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/hierarchical_pgen_merge/MergePgenHierarchicalPython.wdl
-     filters:
-         branches:
-             - kl_gvs_walker_for_pgen
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/hierarchical_pgen_merge/MergePgenHierarchicalWdl.wdl
