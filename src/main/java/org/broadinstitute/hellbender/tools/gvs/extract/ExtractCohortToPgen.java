@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import htsjdk.io.HtsPath;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.pgen.PgenWriter;
 
 import java.util.EnumSet;
-import java.util.List;
 
 
 @SuppressWarnings("unused")
@@ -27,7 +26,16 @@ public class ExtractCohortToPgen extends ExtractCohort {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output PGEN file to which annotated variants should be written."
     )
-    protected GATKPath outputPgenPath = null;
+    private GATKPath outputPgenPath = null;
+
+    @Argument(
+            fullName = "pgenChromosomeCode",
+            shortName = "pcc",
+            doc = "Plink defines a set of chromosome codes that correspond to different sets of contig names for" +
+                    " chromosomes. This tool supports codes 'chrM', which corresponds to hg38 contig names (e.g. " +
+                    "'chrX', 'chrY', etc.), and 'MT', which corresponds to b37 contig names (e.g. 'X', 'Y', etc.)"
+    )
+    private ChromosomeCode pgenChromosomeCode;
 
     @Argument(
             shortName = "wm",
@@ -35,7 +43,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
             doc = "Write mode for the PGEN writer.",
             optional = true
     )
-    protected PgenWriter.PgenWriteMode writeMode = PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_AND_COPY;
+    private WriteMode writeMode = WriteMode.WRITE_AND_COPY;
 
     @Argument(
             fullName = "maxAltAlleles",
@@ -46,13 +54,102 @@ public class ExtractCohortToPgen extends ExtractCohort {
     )
     private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
-    protected PgenWriter pgenWriter = null;
+    @Argument(
+            fullName = "lenientPloidyValidation",
+            shortName = "lpv",
+            doc = "PGEN requires individual sample to be diploid (except for sex chromosomes, which may be haploid - " +
+                    "these are accepted and recoded for pgen as heterozygous/diploid). By default, any ploidy failure " +
+                    "will result in an exception to be thrown. Use this flag to tolerate ploidy failures " +
+                    "(samples will be recoded as missing, and logged if a log file is provided using --writerLogFile)",
+            optional = true
+    )
+    private boolean lenientPloidyValidation = false;
+
+    @Argument(
+            fullName = "writerLogFile",
+            shortName = "wlf",
+            doc = "An optional second log file that the PGEN Writer will use to log sites dropped for exceeding " +
+                    "maxAltAlleles, and also, if --lenientPloidyValidation is used, logs sites and samples where " +
+                    "samples have to be marked as missing for non-conforming ploidy."
+    )
+    private String writerLogFile = null;
+
+    private PgenWriter pgenWriter = null;
+
+    /**
+     * Enum for user input options for pgen chromosome code.  Converts to an equivalent PgenWriter.PgenChromosomeCode
+     */
+    private enum ChromosomeCode implements CommandLineParser.ClpEnum {
+        CHRM("Corresponds to hg38 contig names (e.g. 'chrX', 'chrY', etc.)", PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_CHRM),
+        MT("Corresponds to b37 contig names (e.g. 'X', 'Y', etc.)", PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_MT);
+
+        final String description;
+        final PgenWriter.PgenChromosomeCode equivalentCode;
+
+        ChromosomeCode(String description, PgenWriter.PgenChromosomeCode equivalentCode) {
+            this.description = description;
+            this.equivalentCode = equivalentCode;
+        }
+
+        @Override
+        public String getHelpDoc() {
+            return description;
+        }
+
+        public PgenWriter.PgenChromosomeCode getEquivalentCode() {
+            return this.equivalentCode;
+        }
+    }
+
+    /**
+     * Enum for user input options for pgen write mode.  Converts to an equivalent PgenWriter.PgenWriteMode
+     * Excluding backward seek because we won't know the variant count beforehand
+     */
+    private enum WriteMode implements CommandLineParser.ClpEnum {
+        WRITE_SEPARATE_INDEX(
+                "Write a separate .pgi index file",
+                PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_SEPARATE_INDEX
+        ),
+        WRITE_AND_COPY(
+                "The final real .pgen is only created at the end, by writing the index and then appending " +
+                        "the body of the first temporary .pgen (which is then deleted)",
+                PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_AND_COPY
+        );
+
+        final String description;
+        final PgenWriter.PgenWriteMode equivalentMode;
+
+        WriteMode(String description, PgenWriter.PgenWriteMode equivalentMode) {
+            this.description = description;
+            this.equivalentMode = equivalentMode;
+        }
+
+        @Override
+        public String getHelpDoc() {
+            return description;
+        }
+
+        public PgenWriter.PgenWriteMode getEquivalentMode() {
+            return this.equivalentMode;
+        }
+    }
 
     @Override
     protected void onStartup() {
         super.onStartup();
 
-        pgenWriter = new PgenWriter(outputPgenPath, header, writeMode, EnumSet.noneOf(PgenWriter.PgenWriteFlag.class), maxAltAlleles);
+        pgenWriter = new PgenWriter(
+                outputPgenPath,
+                header,
+                writeMode.getEquivalentMode(),
+                EnumSet.noneOf(PgenWriter.PgenWriteFlag.class),
+                pgenChromosomeCode.getEquivalentCode(),
+                lenientPloidyValidation,
+                PgenWriter.VARIANT_COUNT_UNKNOWN,
+                maxAltAlleles,
+                writerLogFile
+        );
+
     }
 
     @Override
