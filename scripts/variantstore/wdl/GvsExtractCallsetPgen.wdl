@@ -368,7 +368,7 @@ task ExtractTask {
         OUTPUT_FILE_BYTES="$(du -b ~{output_pgen_basename}.pgen | cut -f1)"
         echo ${OUTPUT_FILE_BYTES} > pgen_bytes.txt
 
-        OUTPUT_FILE_PVAR_BYTES="$(du -b ~{output_pgen_basename}.pvar | cut -f1)"
+        OUTPUT_FILE_PVAR_BYTES="$(du -b ~{output_pgen_basename}.pvar.zst | cut -f1)"
         echo ${OUTPUT_FILE_PVAR_BYTES} > pvar_bytes.txt
 
         OUTPUT_FILE_PSAM_BYTES="$(du -b ~{output_pgen_basename}.psam | cut -f1)"
@@ -376,14 +376,14 @@ task ExtractTask {
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
         gsutil cp ~{output_pgen_basename}.pgen ${OUTPUT_GCS_DIR}/
-        gsutil cp ~{output_pgen_basename}.pvar ${OUTPUT_GCS_DIR}/
+        gsutil cp ~{output_pgen_basename}.pvar.zst ${OUTPUT_GCS_DIR}/
         gsutil cp ~{output_pgen_basename}.psam ${OUTPUT_GCS_DIR}/
         OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.pgen"
-        OUTPUT_FILE_PVAR_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.pvar"
+        OUTPUT_FILE_PVAR_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.pvar.zst"
         OUTPUT_FILE_PSAM_DEST="${OUTPUT_GCS_DIR}/~{output_pgen_basename}.psam"
         else
         OUTPUT_FILE_DEST="~{output_pgen_basename}.pgen"
-        OUTPUT_FILE_PVAR_DEST="~{output_pgen_basename}.pvar"
+        OUTPUT_FILE_PVAR_DEST="~{output_pgen_basename}.pvar.zst"
         OUTPUT_FILE_PSAM_DEST="~{output_pgen_basename}.psam"
         fi
 
@@ -405,7 +405,7 @@ task ExtractTask {
     output {
         File output_pgen = "~{output_pgen_basename}.pgen"
         Float output_pgen_bytes = read_float("pgen_bytes.txt")
-        File output_pvar = "~{output_pgen_basename}.pvar"
+        File output_pvar = "~{output_pgen_basename}.pvar.zst"
         Float output_pvar_bytes = read_float("pvar_bytes.txt")
         File output_psam = "~{output_pgen_basename}.psam"
         Float output_psam_bytes = read_float("psam_bytes.txt")
