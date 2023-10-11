@@ -29,33 +29,32 @@ public class ExtractCohortToPgen extends ExtractCohort {
     private GATKPath outputPgenPath = null;
 
     @Argument(
-            fullName = "pgenChromosomeCode",
+            fullName = "pgen-chromosome-code",
             shortName = "pcc",
             doc = "Plink defines a set of chromosome codes that correspond to different sets of contig names for" +
-                    " chromosomes. This tool supports codes 'chrM', which corresponds to hg38 contig names (e.g. " +
-                    "'chrX', 'chrY', etc.), and 'MT', which corresponds to b37 contig names (e.g. 'X', 'Y', etc.)"
+                    " chromosomes. This tool supports codes 'chrM' and 'MT'."
     )
     private ChromosomeCode pgenChromosomeCode;
 
     @Argument(
             shortName = "wm",
-            fullName = "writeMode",
+            fullName = "write-mode",
             doc = "Write mode for the PGEN writer.",
             optional = true
     )
     private WriteMode writeMode = WriteMode.WRITE_AND_COPY;
 
     @Argument(
-            fullName = "maxAltAlleles",
+            fullName = "max-alt-alleles",
             shortName = "maa",
-            doc = "Maximum alt alleles to write.",
+            doc = "Maximum alt alleles per site.  Cannot exceed 254.  Sites with more than the max will be excluded.",
             maxValue = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES,
             optional = true
     )
     private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
     @Argument(
-            fullName = "lenientPloidyValidation",
+            fullName = "lenient-ploidy-validation",
             shortName = "lpv",
             doc = "PGEN requires individual sample to be diploid (except for sex chromosomes, which may be haploid - " +
                     "these are accepted and recoded for pgen as heterozygous/diploid). By default, any ploidy failure " +
@@ -66,11 +65,12 @@ public class ExtractCohortToPgen extends ExtractCohort {
     private boolean lenientPloidyValidation = false;
 
     @Argument(
-            fullName = "writerLogFile",
+            fullName = "writer-log-file",
             shortName = "wlf",
             doc = "An optional second log file that the PGEN Writer will use to log sites dropped for exceeding " +
                     "maxAltAlleles, and also, if --lenientPloidyValidation is used, logs sites and samples where " +
-                    "samples have to be marked as missing for non-conforming ploidy."
+                    "samples have to be marked as missing for non-conforming ploidy.",
+            optional = true
     )
     private String writerLogFile = null;
 
@@ -80,7 +80,7 @@ public class ExtractCohortToPgen extends ExtractCohort {
      * Enum for user input options for pgen chromosome code.  Converts to an equivalent PgenWriter.PgenChromosomeCode
      */
     private enum ChromosomeCode implements CommandLineParser.ClpEnum {
-        CHRM("Corresponds to hg38 contig names (e.g. 'chrX', 'chrY', etc.)", PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_CHRM),
+        chrM("Corresponds to hg38 contig names (e.g. 'chrX', 'chrY', etc.)", PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_CHRM),
         MT("Corresponds to b37 contig names (e.g. 'X', 'Y', etc.)", PgenWriter.PgenChromosomeCode.PLINK_CHROMOSOME_CODE_MT);
 
         final String description;
