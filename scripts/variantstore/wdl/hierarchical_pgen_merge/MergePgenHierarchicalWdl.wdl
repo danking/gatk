@@ -2,9 +2,9 @@ version 1.0
 
 workflow MergePgenWorkflow {
     input {
-        Array[File] pgen_files
-        Array[File] pvar_files
-        Array[File] psam_files
+        File pgen_file_list
+        File pvar_file_list
+        File psam_file_list
         String plink_docker
         String output_file_base_name
         Int? threads
@@ -12,19 +12,18 @@ workflow MergePgenWorkflow {
         Int split_count
     }
 
-    call MakeFileLists as MakeListsForSplit {
+    call SortFileLists {
         input:
-            pgen_files = pgen_files,
-            psam_files = psam_files,
-            pvar_files = pvar_files,
-            prefix_num_sorted = true
+            pgen_list = pgen_file_list,
+            psam_list = psam_file_list,
+            pvar_list = pvar_file_list,
     }
 
     call SplitFileLists {
         input:
-            pgen_list = MakeListsForSplit.pgen_list,
-            psam_list = MakeListsForSplit.psam_list,
-            pvar_list = MakeListsForSplit.pvar_list,
+            pgen_list = SortFileLists.sorted_pgen_list,
+            psam_list = SortFileLists.sorted_psam_list,
+            pvar_list = SortFileLists.sorted_pvar_list,
             split_count = split_count
     }
 
@@ -142,8 +141,6 @@ task MakeFileLists {
         Array[File] pgen_files
         Array[File] pvar_files
         Array[File] psam_files
-
-        Boolean prefix_num_sorted = false
     }
 
     parameter_meta {
@@ -167,57 +164,83 @@ task MakeFileLists {
         PSAM_ARRAY=(~{sep=" " psam_files})
         PVAR_ARRAY=(~{sep=" " pvar_files})
 
-        # Sort the files by the number prefixing the file name
-        if [ ~{prefix_num_sorted} ]
-        then
-            # Maps of numbers to uris
-            declare -A pgen_map
-            declare -A psam_map
-            declare -A pvar_map
-
-            # Loop through arrays and add them to maps with the number prefix as the key
-            for i in "${!PGEN_ARRAY[@]}"
-            do
-                PGEN_NUM=$(echo "${PGEN_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
-                pgen_map[$PGEN_NUM]="${PGEN_ARRAY[$i]}"
-                PSAM_NUM=$(echo "${PSAM_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
-                psam_map[$PSAM_NUM]="${PSAM_ARRAY[$i]}"
-                PVAR_NUM=$(echo "${PVAR_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
-                pvar_map[$PVAR_NUM]="${PVAR_ARRAY[$i]}"
-            done
-
-            # Sort the keys numerically
-            SORTED_PGEN_NUM=($(printf "%s\n" "${!pgen_map[@]}" | sort -n))
-            SORTED_PSAM_NUM=($(printf "%s\n" "${!psam_map[@]}" | sort -n))
-            SORTED_PVAR_NUM=($(printf "%s\n" "${!pvar_map[@]}" | sort -n))
-
-            # Write to files
-            for num in "${SORTED_PGEN_NUM[@]}"
-            do
-                echo "${pgen_map[$num]}" >> pgen_list.txt
-            done
-            for num in "${SORTED_PSAM_NUM[@]}"
-            do
-                echo "${psam_map[$num]}" >> psam_list.txt
-            done
-            for num in "${SORTED_PVAR_NUM[@]}"
-            do
-                echo "${pvar_map[$num]}" >> pvar_list.txt
-            done
-        else
-            for i in "${!PGEN_ARRAY[@]}"
-            do
-                echo "${PGEN_ARRAY[$i]}" >> pgen_list.txt
-                echo "${PSAM_ARRAY[$i]}" >> psam_list.txt
-                echo "${PVAR_ARRAY[$i]}" >> pvar_list.txt
-            done
-        fi
+        for i in "${!PGEN_ARRAY[@]}"
+        do
+            echo "${PGEN_ARRAY[$i]}" >> pgen_list.txt
+            echo "${PSAM_ARRAY[$i]}" >> psam_list.txt
+            echo "${PVAR_ARRAY[$i]}" >> pvar_list.txt
+        done
     >>>
 
     output {
         File pgen_list = "pgen_list.txt"
         File psam_list = "psam_list.txt"
         File pvar_list = "pvar_list.txt"
+    }
+
+    runtime {
+        docker: "ubuntu:22.04"
+        memory: "1GB"
+        bootDiskSizeGb: 15
+    }
+}
+
+task SortFileLists {
+    input {
+        File pgen_list
+        File psam_list
+        File pvar_list
+    }
+
+    command <<<
+        touch sorted_pgen_list.txt
+        touch sorted_psam_list.txt
+        touch sorted_pvar_list.txt
+
+        readarray -t PGEN_ARRAY < ~{pgen_list}
+        readarray -t PSAM_ARRAY < ~{psam_list}
+        readarray -t PVAR_ARRAY < ~{pvar_list}
+
+        # Maps of numbers to uris
+        declare -A pgen_map
+        declare -A psam_map
+        declare -A pvar_map
+
+        # Loop through arrays and add them to maps with the number prefix as the key
+        for i in "${!PGEN_ARRAY[@]}"
+        do
+            PGEN_NUM=$(echo "${PGEN_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+            pgen_map[$PGEN_NUM]="${PGEN_ARRAY[$i]}"
+            PSAM_NUM=$(echo "${PSAM_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+            psam_map[$PSAM_NUM]="${PSAM_ARRAY[$i]}"
+            PVAR_NUM=$(echo "${PVAR_ARRAY[$i]}" | sed 's/.*\///' | sed 's/\-.*//')
+            pvar_map[$PVAR_NUM]="${PVAR_ARRAY[$i]}"
+        done
+
+        # Sort the keys numerically
+        SORTED_PGEN_NUM=($(printf "%s\n" "${!pgen_map[@]}" | sort -n))
+        SORTED_PSAM_NUM=($(printf "%s\n" "${!psam_map[@]}" | sort -n))
+        SORTED_PVAR_NUM=($(printf "%s\n" "${!pvar_map[@]}" | sort -n))
+
+        # Write to files
+        for num in "${SORTED_PGEN_NUM[@]}"
+        do
+            echo "${pgen_map[$num]}" >> sorted_pgen_list.txt
+        done
+        for num in "${SORTED_PSAM_NUM[@]}"
+        do
+            echo "${psam_map[$num]}" >> sorted_psam_list.txt
+        done
+        for num in "${SORTED_PVAR_NUM[@]}"
+        do
+            echo "${pvar_map[$num]}" >> sorted_pvar_list.txt
+        done
+    >>>
+
+    output {
+        File sorted_pgen_list = "sorted_pgen_list.txt"
+        File sorted_psam_list = "sorted_psam_list.txt"
+        File sorted_pvar_list = "sorted_pvar_list.txt"
     }
 
     runtime {
