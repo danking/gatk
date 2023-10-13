@@ -111,11 +111,22 @@ task MergePgen {
             pgen_basename=$(cat mergelist.txt | xargs)
             mv ${pgen_basename}.pgen ~{output_file_base_name}.pgen
             mv ${pgen_basename}.psam ~{output_file_base_name}.psam
-            mv ${pgen_basename}.pvar ~{output_file_base_name}.pvar
+            if test -f ${pgen_basename}.pvar
+            then
+                mv ${pgen_basename}.pvar ~{output_file_base_name}.pvar
+            else
+                mv ${pgen_basename}.pvar.zst ~{output_file_base_name}.pvar.zst
+            fi
             ;;
         *)
             echo "${count} pgen files, merging"
-            plink2 --pmerge-list mergelist.txt --threads ~{threads} --out ~{output_file_base_name}
+            first_pvar_extension_sorta=$(head -n 1 mergelist.txt | tail -c 4)
+            if ["$first_pvar_extension_sorta" = "pvar"]
+            then
+                plink2 --pmerge-list mergelist.txt --threads ~{threads} --out ~{output_file_base_name} --pmerge-output-vzs
+            else
+                plink2 --pmerge-list mergelist.txt pfile-vzs --threads ~{threads} --out ~{output_file_base_name} --pmerge-output-vzs
+            fi
             ;;
         esac
 
@@ -123,7 +134,7 @@ task MergePgen {
 
     output {
         File pgen_file = "${output_file_base_name}.pgen"
-        File pvar_file = "${output_file_base_name}.pvar"
+        File pvar_file = "${output_file_base_name}.pvar.zst"
         File psam_file = "${output_file_base_name}.psam"
     }
 
