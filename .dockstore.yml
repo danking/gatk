@@ -164,7 +164,7 @@ workflows:
              - kl_gvs_walker_for_pgen
    - name: MergePgenHierarchicalWdl
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/hierarchical_pgen_merge/MergePgenHierarchicalWdl.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
      filters:
          branches:
              - kl_gvs_walker_for_pgen
