@@ -36,7 +36,7 @@ task Convert {
         Array[File] psams
     }
 
-    Int disk_in_gb = ceil(10 + 7 * (size(pgens, "GB") + size(pvars, "GB") + size(psams, "GB")))
+    Int disk_in_gb = ceil(10 + 15 * (size(pgens, "GB") + size(pvars, "GB") + size(psams, "GB")))
 
     command <<<
         set -e
