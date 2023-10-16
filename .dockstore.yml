@@ -97,6 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -126,6 +127,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
@@ -135,6 +137,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -146,7 +149,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsExtractCallset
@@ -156,7 +158,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1004-extract
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsImportGenomes
@@ -166,6 +168,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -175,6 +178,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -186,7 +190,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
@@ -196,6 +200,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -205,6 +210,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsValidateVat
@@ -216,6 +222,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
@@ -234,6 +241,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsJointVariantCalling
@@ -272,6 +280,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
@@ -317,6 +326,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsExtractAvroFilesForHail
@@ -326,7 +336,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
+             - EchoCallset
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -336,6 +346,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - EchoCallset
          tags:
              - /.*/
    - name: HailFromWdl
@@ -344,7 +355,6 @@ workflows:
      filters:
          branches:
              - master
-             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
