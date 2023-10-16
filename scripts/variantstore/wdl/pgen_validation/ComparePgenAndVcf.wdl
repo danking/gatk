@@ -59,7 +59,7 @@ task Convert {
     >>>
 
     output {
-        Array[File] output_vcfs = glob("*.vcf")
+        Array[File] output_vcfs = glob("*.vcf.gz")
     }
 
     runtime {
