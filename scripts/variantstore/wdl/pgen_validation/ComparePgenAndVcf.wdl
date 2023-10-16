@@ -14,7 +14,8 @@ workflow ComparePgensAndVcfs {
         input:
             pgens = pgens,
             pvars = pvars,
-            psams = psams
+            psams = psams,
+            vcfs_for_size = vcfs
     }
 
     call Compare.CompareFiles {
@@ -34,9 +35,17 @@ task Convert {
         Array[File] pgens
         Array[File] pvars
         Array[File] psams
+
+        Array[File] vcfs_for_size
     }
 
-    Int disk_in_gb = ceil(10 + 15 * (size(pgens, "GB") + size(pvars, "GB") + size(psams, "GB")))
+    parameter_meta {
+        vcfs_for_size: {
+           localization_optional: true
+       }
+    }
+
+    Int disk_in_gb = ceil(10 + 2 * size(vcfs_for_size, "GB"))
 
     command <<<
         set -e
