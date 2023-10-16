@@ -54,7 +54,7 @@ task Convert {
         do
             FILE_BASENAME="$(basename ${PGEN_ARRAY[$i]} .pgen)"
             FILENAME_NO_EXT="${PGEN_ARRAY[$i]%.pgen}"
-            plink2 --pfile ${FILENAME_NO_EXT} --export vcf --output-chr chrMT --out ${FILE_BASENAME}
+            plink2 --pfile ${FILENAME_NO_EXT} --export vcf bgz --output-chr chrMT --out ${FILE_BASENAME}
         done
     >>>
 
