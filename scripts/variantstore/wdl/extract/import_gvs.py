@@ -394,8 +394,11 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.drop('allele_NO', 'allele_YES', 'allele_is_snp', 'allele_OK')
 
-        vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
-        vd = vd.select_entries(PGT=hl.vds.lgt_to_gt(vd.LPGT, vd.LA), **vd.entry)
+        vd = vd.select_entries(
+            GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA),
+            PGT=hl.vds.lgt_to_gt(vd.LPGT, vd.LA),
+            **vd.entry
+        )
 
         hl.vds.VariantDataset(
             reference_data=rd,
