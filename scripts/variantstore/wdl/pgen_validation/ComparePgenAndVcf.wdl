@@ -41,8 +41,8 @@ task Convert {
 
     parameter_meta {
         vcfs_for_size: {
-           localization_optional: true
-       }
+            localization_optional: true
+        }
     }
 
     Int disk_in_gb = ceil(10 + 2 * size(vcfs_for_size, "GB"))
