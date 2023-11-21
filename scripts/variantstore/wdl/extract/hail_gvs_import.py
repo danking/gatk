@@ -20,6 +20,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     from hail.utils.java import Env
 
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
+    hl._set_flags(use_new_shuffle='1')
 
     rg38 = hl.get_reference('GRCh38')
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
