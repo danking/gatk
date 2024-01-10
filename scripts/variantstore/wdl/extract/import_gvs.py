@@ -2,7 +2,55 @@ import os
 from typing import List
 
 import hail as hl
-from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
+
+try:
+    from hail.vds.combiner.combine import merge_alleles, calculate_new_intervals
+    using_0_2_102 = False
+except:
+    using_0_2_102 = True
+    from contextlib import contextmanager
+    @contextmanager
+    def _with_flags(**flags):
+        # imported from 0.2.126
+        before = hl._get_flags(*flags)
+        try:
+            hl._set_flags(**flags)
+            yield
+        finally:
+            hl._set_flags(**before)
+    hl._with_flags = _with_flags
+
+    def merge_alleles(alleles):
+        # copied from 0.2.102
+        from hail.expr.functions import _num_allele_type, _allele_ints
+        return hl.rbind(
+            alleles.map(lambda a: hl.or_else(a[0], ''))
+            .fold(lambda s, t: hl.if_else(hl.len(s) > hl.len(t), s, t), ''),
+            lambda ref:
+            hl.rbind(
+                alleles.map(
+                    lambda al: hl.rbind(
+                        al[0],
+                        lambda r:
+                        hl.array([ref]).extend(
+                            al[1:].map(
+                                lambda a:
+                                hl.rbind(
+                                    _num_allele_type(r, a),
+                                    lambda at:
+                                    hl.if_else(
+                                        (_allele_ints['SNP'] == at)
+                                        | (_allele_ints['Insertion'] == at)
+                                        | (_allele_ints['Deletion'] == at)
+                                        | (_allele_ints['MNP'] == at)
+                                        | (_allele_ints['Complex'] == at),
+                                        a + ref[hl.len(r):],
+                                        a)))))),
+                lambda lal:
+                hl.struct(
+                    globl=hl.array([ref]).extend(hl.array(hl.set(hl.flatten(lal)).remove(ref))),
+                    local=lal)))
+    from hail.experimental.vcf_combiner.vcf_combiner import calculate_new_intervals
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
 
@@ -284,6 +332,10 @@ def import_gvs(refs: 'List[List[str]]',
             var_mt = var_mt._key_rows_by_assert_sorted('locus', 'alleles')
 
             info(f'import_gvs: writing intermediate VDS for sample group {idx+1} with {n_new_samples} samples...')
+            # for 0.2.102, we need a reference allele and an rsid
+            if using_0_2_102:
+                ref_mt = ref_mt.annotate_rows(ref_allele='A')
+                var_mt = var_mt.annotate_rows(rsid=hl.missing(hl.tstr))
             vds = hl.vds.VariantDataset(ref_mt, var_mt)
             vds.write(path, overwrite=True)
 
